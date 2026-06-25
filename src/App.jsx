@@ -9,12 +9,11 @@ import DashboardHome from './pages/DashboardHome';
 import UsersDashboard from './pages/users/UsersDashboard';
 import RolesDashboard from './pages/roles/RolesDashboard';
 
-// Placeholder views for non-configured modules
-const EmployeesDashboard = () => <div className="p-4 font-semibold text-zinc-700">Employees Directory (Coming Soon)</div>;
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { setCredentials, logOut, setLoading } from './store/authSlice';
 import ProfileSettings from './pages/profile/ProfileSettings';
+import EmployeesDashboard from './pages/Employees/EmployeesDashboard';
 
 export default function App() {
   const dispatch = useDispatch();
