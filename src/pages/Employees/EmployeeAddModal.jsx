@@ -63,6 +63,27 @@ export default function EmployeeAddModal({ isOpen, onClose }) {
           {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
+
+        <div>
+          <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+            Weekly Contract Hours
+          </label>
+          <div className="mt-1">
+            {/* 🛑 Add this input field */}
+            <input
+              {...register("contractHours")}
+              type="text"
+              placeholder="e.g. 35"
+              className="block w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none transition-colors"
+            />
+          </div>
+          {errors.contractHours && (
+            <p className="mt-1 text-xs text-red-500">
+              {errors.contractHours.message}
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Pin Code (4-6 digits, Optional)</label>
           <div className="mt-1 flex space-x-2">
@@ -73,6 +94,7 @@ export default function EmployeeAddModal({ isOpen, onClose }) {
           </div>
           {errors.pinCode && <p className="mt-1 text-xs text-red-500">{errors.pinCode.message}</p>}
         </div>
+
 
         <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-zinc-900 dark:bg-zinc-50 p-2.5 text-sm font-semibold text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:bg-zinc-400 dark:disabled:bg-zinc-800 transition-all">
           {isSubmitting ? 'Saving...' : 'Create Employee'}

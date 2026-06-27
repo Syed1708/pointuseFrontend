@@ -21,6 +21,7 @@ import {
   FiX,
   FiSun,
   FiMoon, // 🛑 Added FiSun & FiMoon
+  FiCalendar 
 } from "react-icons/fi";
 import { logOut } from "../store/authSlice";
 import { useTheme } from "../context/ThemeContext"; // 🛑 Import useTheme
@@ -62,12 +63,21 @@ export default function DashboardLayout() {
     }
   };
 
+  // 🛑 1. ADD permissions to restrict items [1]
   const navItems = [
-    { to: "/dashboard", label: "Dashboard", icon: FiGrid, end: true },
-    { to: "/dashboard/users", label: "Users", icon: FiUsers },
-    { to: "/dashboard/employees", label: "Employees", icon: FiUser },
-    { to: "/dashboard/roles", label: "Roles", icon: FiShield },
+    { to: '/dashboard', label: 'Dashboard', icon: FiGrid, end: true },
+    { to: '/dashboard/users', label: 'Users', icon: FiUsers, permission: 'employees:view' },
+    { to: '/dashboard/employees', label: 'Employees', icon: FiUser, permission: 'employees:view' },
+    { to: '/dashboard/roles', label: 'Roles', icon: FiShield, permission: 'employees:view' },
+    { to: '/dashboard/planning', label: 'Planning', icon: FiCalendar },
   ];
+
+  // 🛑 2. FILTER navItems dynamically based on the current user's DB permissions [2]
+  const filteredNavItems = navItems.filter((item) => {
+    if (!item.permission) return true; // Public item
+    const isAdmin = user?.role?.name === 'admin';
+    return user?.role?.permissions?.includes(item.permission) || isAdmin;
+  });
 
   // 🛑 Upgraded Sidebar with dark mode styles
   const SidebarContent = () => (
@@ -90,7 +100,7 @@ export default function DashboardLayout() {
       </div>
 
       <nav className="flex-1 space-y-1.5 px-4 py-6">
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
