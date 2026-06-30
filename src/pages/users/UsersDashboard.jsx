@@ -2,12 +2,22 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import GenericModule from '../../components/GenericModule';
-import UserAddModal from './UserAddModal';
-import UserEditModal from './UserEditModal';
+import UserFormModal from './UserFormModal';
+
 
 export default function UsersDashboard() {
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const handleEditClick = (user) => {
+    setSelectedUser(user);
+    setIsFormOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setSelectedUser(null); // Triggers Create Mode automatically [2]
+    setIsFormOpen(true);
+  };
 
   // 1. Fetch available roles to feed the dynamic filter dropdown
   const { data: roles = [] } = useQuery({
@@ -73,24 +83,19 @@ const filterOptions = rolesList.map(r => ({
         columns={columns}
         filterOptions={filterOptions} // 🛑 Pass dynamically loaded roles for filtering
         filterPlaceholder="Role"
-        addBtnLabel="Add New Employee"
-        onAddClick={() => setIsAddOpen(true)}
-        onEditClick={(user) => setEditingUser(user)}
+        addBtnLabel="Add New User"
+        onAddClick={handleAddClick}
+        onEditClick={handleEditClick}
       />
 
-      {/* Modular Form Modals */}
-      <UserAddModal 
-        isOpen={isAddOpen} 
-        onClose={() => setIsAddOpen(false)} 
-        roles={roles} 
+      <UserFormModal
+        isOpen={isFormOpen} 
+        onClose={() => setIsFormOpen(false)} 
+        user={selectedUser} // 🛑 Pass selected object to switch mode [2]
+        isEmployeeModule={false} // 🛑 Shows the assigned roles dropdown
       />
 
-      <UserEditModal 
-        isOpen={!!editingUser} 
-        onClose={() => setEditingUser(null)} 
-        user={editingUser} 
-        roles={roles} 
-      />
+
     </div>
   );
 }

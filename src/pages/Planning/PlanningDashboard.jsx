@@ -88,7 +88,7 @@ export default function PlanningDashboard() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['schedules', currentWeekStart],
     queryFn: async () => {
       const res = await api.get(`/schedules/grid?weekStartDate=${currentWeekStart}`);
@@ -98,7 +98,7 @@ export default function PlanningDashboard() {
 
   useEffect(() => {
     if (data) setGridData(data);
-    console.log('Fetched grid data for week starting:', currentWeekStart, data);
+    // console.log('Fetched grid data for week starting:', currentWeekStart, data);
   }, [data]);
 
   const { handleDragStart, handleDragOver, handleDrop } = usePlanningDrag(gridData, setGridData);
@@ -381,16 +381,20 @@ export default function PlanningDashboard() {
 
         </div>
       </div>
-
-      {/* Calendar Grid */}
+      {isLoading ? (
+        /* Show beautiful centered spinner card while fetching data */
+        <div className="flex h-96 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm transition-colors">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent"></div>
+        </div>
+      ) : (
       <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-sm transition-colors">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800 text-left text-xs">
             <thead className="bg-zinc-50 dark:bg-zinc-900 font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
               <tr>
-                <th className="px-4 py-3 min-w-[180px]">Employee / Contract</th>
+                <th className="px-4 py-3 min-w-45">Employee / Contract</th>
                 {weekdays.map((day, idx) => (
-                  <th key={day} className="px-4 py-3 min-w-[155px] capitalize">
+                  <th key={day} className="px-4 py-3 min-w-38.75 capitalize">
                     {day} - {getDayDateString(currentWeekStart, idx)}
                   </th>
                 ))}
@@ -416,7 +420,7 @@ export default function PlanningDashboard() {
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, item.employee._id, dayKey)}
                         onClick={() => handleCellClick(item.employee, dayKey)} // 🛑 Combined handler
-                        className={`px-4 py-4 border-r border-zinc-200 dark:border-zinc-800 align-top min-h-[100px] hover:bg-zinc-50/70 dark:hover:bg-zinc-900/20 transition cursor-pointer ${
+                        className={`px-4 py-4 border-r border-zinc-200 dark:border-zinc-800 align-top min-h-25 hover:bg-zinc-50/70 dark:hover:bg-zinc-900/20 transition cursor-pointer ${
                           copiedShift ? 'bg-indigo-50/10 dark:bg-indigo-950/5 border-dashed border-indigo-200' : ''
                         }`}
                       >
@@ -484,6 +488,8 @@ export default function PlanningDashboard() {
           </table>
         </div>
       </div>
+
+            )}
 
       {/* Modal Block */}
       <Modal 
