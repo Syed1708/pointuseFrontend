@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
+import toast from 'react-hot-toast'; // 🛑 1. FIXED: Imported toast [3]
 
 import Login from "./pages/Login";
 import DashboardLayout from "./components/DashboardLayout";
@@ -16,15 +17,15 @@ import EmployeesDashboard from "./pages/Employees/EmployeesDashboard";
 import PlanningDashboard from "./pages/Planning/PlanningDashboard";
 import NotFound from "./pages/NotFound";
 import PlanningEmployee from "./pages/Planning/PlanningEmployee";
-import socket from './services/socket'; // 🛑 Import socket service
+import socket from './services/socket'; 
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function App() {
   const dispatch = useDispatch();
-  const queryClient = useQueryClient(); // 🛑 Access TanStack Query engine [3]
+  const queryClient = useQueryClient(); 
   const { user, loading } = useSelector((state) => state.auth);
 
-    // 1. Session Restoration on Mount
+  // 1. Session Restoration on Mount
   useEffect(() => {
     const restoreSession = async () => {
       try {
@@ -59,71 +60,67 @@ export default function App() {
     restoreSession();
   }, [dispatch]);
 
-    // 🛑 2. SOCKET MANAGEMENT: Real-Time Event Bus [3]
-// Inside src/App.jsx (Replace your socket useEffect hook with this):
+  // 2. SOCKET MANAGEMENT: Real-Time Event Bus [3]
+  useEffect(() => {
+    if (user) {
+      socket.connect(); 
 
-useEffect(() => {
-  if (user) {
-    socket.connect(); // 🔌 Connect manually [2]
-
-    // 🛑 FIXED: Listen for the native 'connect' event to handle initial connects & automatic reconnects [1, 2]
-    socket.on('connect', () => {
-      const userId = user._id || user.id;
-      socket.emit('register_user', userId); // 🔌 Register User ID securely on the backend registry [2]
-      console.log(`🔌 Socket connected (${socket.id}). Registered User ID: ${userId}`);
-    });
-
-    // Listen for private, target-specific notifications [2]
-    socket.on('notification_received', (notification) => {
-      // Show gorgeous toast notification
-      toast.success(`✉️ New Alert: ${notification.title}`, {
-        duration: 5000
+      // Listen for the native 'connect' event to handle reconnects safely [1, 2]
+      socket.on('connect', () => {
+        const userId = user._id || user.id;
+        socket.emit('register_user', userId); 
+        console.log(`🔌 Socket connected (${socket.id}). Registered User ID: ${userId}`);
       });
-      // Invalidate the cache to instantly increase the bell dot counter [3]
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    });
 
-    // Listen for global published schedules
-    socket.on('schedule_published', (data) => {
-      toast.success(`📅 Live Update: A new schedule starting on ${data.weekStartDate} has been published!`, {
-        duration: 6000
+      // Listen for private, target-specific notifications [2]
+      socket.on('notification_received', (notification) => {
+        console.log("✉️ Received private live notification:", notification);
+        toast.success(`✉️ New Alert: ${notification.title}`, {
+          duration: 5000
+        });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }); // Live refresh the badge [3]
       });
-      queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
-      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 🛑 Secondary fallback refresh [3]
-    });
 
-    // Listen for raw database updates
-    socket.on('user_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
-    });
+      // Listen for global published schedules
+      socket.on('schedule_published', (data) => {
+        toast.success(`📅 Live Update: A new schedule starting on ${data.weekStartDate} has been published!`, {
+          duration: 6000
+        });
+        queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
+        queryClient.invalidateQueries({ queryKey: ['schedules'] });
+        queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }); 
+      });
 
-    socket.on('role_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] });
-    });
+      // Listen for raw database updates [3]
+      socket.on('user_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['users'] });
+        queryClient.invalidateQueries({ queryKey: ['employees'] });
+        queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+      });
 
-    socket.on('schedule_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['schedules'] });
-      queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
-      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
-    });
-  }
+      socket.on('role_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['roles'] });
+      });
 
-  return () => {
-    // 🧹 Clean up all active listeners safely on logout/unmount
-    socket.off('connect');
-    socket.off('register_user');
-    socket.off('notification_received');
-    socket.off('schedule_published');
-    socket.off('user_updated');
-    socket.off('role_updated');
-    socket.off('schedule_updated');
-    socket.disconnect(); // Disconnect safely on logout [2]
-  };
-}, [user, queryClient]);
+      socket.on('schedule_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['schedules'] });
+        queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
+        queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+      });
+    }
+
+    return () => {
+      socket.off('connect');
+      socket.off('register_user');
+      socket.off('notification_received');
+      socket.off('schedule_published');
+      socket.off('user_updated');
+      socket.off('role_updated');
+      socket.off('schedule_updated');
+      socket.disconnect(); 
+    };
+  }, [user, queryClient]);
 
   if (loading) {
     return (
@@ -132,23 +129,6 @@ useEffect(() => {
       </div>
     );
   }
-
-function PlanningRouter() {
-  const { user } = useSelector((state) => state.auth);
-  
-  const roleName = user?.role?.name; // e.g. "admin", "manager", "employee"
-  
-  // 🛑 1. ADD THIS DEBUG LOG to see exactly what role React is reading!
-  console.log("🛡️ Planning Router check - Logged-in User Role:", roleName);
-
-  if (['admin', 'manager'].includes(roleName)) {
-    // If they are an Admin or Manager, show the full interactive grid
-    return <PlanningDashboard />;
-  }
-  
-  // If they are a standard Employee (or any other role), show ONLY their personal schedule
-  return <PlanningEmployee />;
-}
 
   return (
     <BrowserRouter>
@@ -206,4 +186,21 @@ function PlanningRouter() {
       </Routes>
     </BrowserRouter>
   );
+}
+
+// =========================================================================
+// 🛑 2. FIXED: PlanningRouter declared OUTSIDE the App component [3]
+// This prevents component re-creation and unmounting flickering on state changes [3].
+// =========================================================================
+function PlanningRouter() {
+  const { user } = useSelector((state) => state.auth);
+  const roleName = user?.role?.name; 
+  
+  console.log("🛡️ Planning Router check - Logged-in User Role:", roleName);
+
+  if (['admin', 'manager'].includes(roleName)) {
+    return <PlanningDashboard />;
+  }
+  
+  return <PlanningEmployee />;
 }
