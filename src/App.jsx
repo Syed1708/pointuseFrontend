@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import PlanningEmployee from "./pages/Planning/PlanningEmployee";
 import socket from './services/socket'; 
 import { useQueryClient } from "@tanstack/react-query";
+import TimeclockTerminal from "./pages/Timeclock/TimeclockTerminal";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -81,6 +82,11 @@ export default function App() {
         queryClient.invalidateQueries({ queryKey: ['notifications'] }); // Live refresh the badge [3]
       });
 
+          // 🛑 LIVE TIMESHEETS REFRESH LISTENER
+    // Automatically invalidates the stats query cache on any clock-in or out [3]
+    socket.on('timeclock_updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['live-stats'] }); // Live reload dashboard counters [3]
+    });
       // Listen for global published schedules
       socket.on('schedule_published', (data) => {
         toast.success(`📅 Live Update: A new schedule starting on ${data.weekStartDate} has been published!`, {
@@ -133,10 +139,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+
+         {/* 🛑 ADD THIS LINE FIRST: Automatically redirects the root "/" to "/dashboard" [1] */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
         {/* 1. Public Sign In Route */}
         <Route path="/login" element={<Login />} />
 
-        {/* 2. Nested Dashboard Workspace Route */}
+        {/* 2. Standalone Shared Terminal Route (Keep this public and independent) */}
+        <Route path="/timeclock" element={<TimeclockTerminal />} />
+
+        {/* 3. Nested Dashboard Workspace Route */}
         <Route
           path="/dashboard"
           element={

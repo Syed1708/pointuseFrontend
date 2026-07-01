@@ -9,11 +9,7 @@ export const employeeCreateSchema = z.object({
     (val) => (val === "" || val === undefined ? 35 : Number(val)),
     z.number().min(1, "Must be at least 1 hour"),
   ),
-  pinCode: z
-    .string()
-    .regex(/^\d{4,6}$/, "PIN must be between 4 and 6 digits")
-    .optional()
-    .or(z.literal("")),
+pinCode: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits").optional().or(z.literal("")),
 });
 
 export const employeeEditSchema = z.object({
@@ -26,7 +22,7 @@ export const employeeEditSchema = z.object({
   ),
   pinCode: z
     .string()
-    .regex(/^\d{4,6}$/, "PIN must be between 4 and 6 digits")
+    .regex(/^\d{4}$/, "PIN must be exactly 4 digits")
     .optional()
     .or(z.literal("")),
 });
