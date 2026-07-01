@@ -26,6 +26,7 @@ import {
 import { logOut } from "../store/authSlice";
 import { useTheme } from "../context/ThemeContext"; // 🛑 Import useTheme
 import api from "../services/api";
+import NotificationBell from "./NotificationBell";
 
 export default function DashboardLayout() {
   const { user } = useSelector((state) => state.auth);
@@ -192,6 +193,9 @@ export default function DashboardLayout() {
           </div>
 
           <div className="flex items-center space-x-4">
+
+            <NotificationBell />
+            
             {/* 🛑 Theme Toggle Button */}
             <button
               onClick={toggleTheme}

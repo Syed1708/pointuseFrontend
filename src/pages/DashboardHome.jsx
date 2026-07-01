@@ -12,16 +12,7 @@ export default function DashboardHome() {
   const { user } = useSelector((state) => state.auth);
   const isManagerOrAdmin = ['admin', 'manager'].includes(user?.role?.name);
 
-  // 1. TanStack Query: Fetch role-specific stats from backend [3]
-  const { data: statsData, isLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const res = await api.get('/schedules/grid?weekStartDate=...'); // Falls back to matching /api/dashboard logic if needed, but let's point to our new endpoint:
-      const resStats = await api.get('/schedules/download-pdf?weekStartDate=...'); // let's use the clean endpoint below:
-    }
-  });
-
-  // Fetch from the clean stats endpoint we just created
+  // 1. Fetch live metrics from the centralized backend stats endpoint
   const { data: liveStats, isLoading: isStatsLoading } = useQuery({
     queryKey: ['live-stats'],
     queryFn: async () => {
@@ -30,7 +21,7 @@ export default function DashboardHome() {
     }
   });
 
-  // 2. Map loaded database stats dynamically [2]
+  // 2. Map loaded database stats dynamically based on role [2]
   const managerStats = [
     { 
       label: 'Total Employees', 

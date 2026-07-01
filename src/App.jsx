@@ -16,11 +16,15 @@ import EmployeesDashboard from "./pages/Employees/EmployeesDashboard";
 import PlanningDashboard from "./pages/Planning/PlanningDashboard";
 import NotFound from "./pages/NotFound";
 import PlanningEmployee from "./pages/Planning/PlanningEmployee";
+import socket from './services/socket'; // 🛑 Import socket service
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function App() {
   const dispatch = useDispatch();
-  const { loading } = useSelector((state) => state.auth);
+  const queryClient = useQueryClient(); // 🛑 Access TanStack Query engine [3]
+  const { user, loading } = useSelector((state) => state.auth);
 
+    // 1. Session Restoration on Mount
   useEffect(() => {
     const restoreSession = async () => {
       try {
@@ -54,6 +58,72 @@ export default function App() {
 
     restoreSession();
   }, [dispatch]);
+
+    // 🛑 2. SOCKET MANAGEMENT: Real-Time Event Bus [3]
+// Inside src/App.jsx (Replace your socket useEffect hook with this):
+
+useEffect(() => {
+  if (user) {
+    socket.connect(); // 🔌 Connect manually [2]
+
+    // 🛑 FIXED: Listen for the native 'connect' event to handle initial connects & automatic reconnects [1, 2]
+    socket.on('connect', () => {
+      const userId = user._id || user.id;
+      socket.emit('register_user', userId); // 🔌 Register User ID securely on the backend registry [2]
+      console.log(`🔌 Socket connected (${socket.id}). Registered User ID: ${userId}`);
+    });
+
+    // Listen for private, target-specific notifications [2]
+    socket.on('notification_received', (notification) => {
+      // Show gorgeous toast notification
+      toast.success(`✉️ New Alert: ${notification.title}`, {
+        duration: 5000
+      });
+      // Invalidate the cache to instantly increase the bell dot counter [3]
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
+
+    // Listen for global published schedules
+    socket.on('schedule_published', (data) => {
+      toast.success(`📅 Live Update: A new schedule starting on ${data.weekStartDate} has been published!`, {
+        duration: 6000
+      });
+      queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }); // 🛑 Secondary fallback refresh [3]
+    });
+
+    // Listen for raw database updates
+    socket.on('user_updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+    });
+
+    socket.on('role_updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] });
+    });
+
+    socket.on('schedule_updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['my-schedule'] });
+      queryClient.invalidateQueries({ queryKey: ['live-stats'] });
+    });
+  }
+
+  return () => {
+    // 🧹 Clean up all active listeners safely on logout/unmount
+    socket.off('connect');
+    socket.off('register_user');
+    socket.off('notification_received');
+    socket.off('schedule_published');
+    socket.off('user_updated');
+    socket.off('role_updated');
+    socket.off('schedule_updated');
+    socket.disconnect(); // Disconnect safely on logout [2]
+  };
+}, [user, queryClient]);
 
   if (loading) {
     return (

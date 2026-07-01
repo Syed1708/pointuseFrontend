@@ -117,7 +117,7 @@ export default function UserFormModal({ isOpen, onClose, user, isEmployeeModule 
         {!isEmployeeModule && (
           <div className="animate-in fade-in duration-100">
             <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Assign Role</label>
-            <select {...register('role')} className="mt-1 block w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none bg-white dark:bg-zinc-900 transition-colors">
+            <select {...register('role')} className="mt-1 block w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:border-zinc-900 dark:focus:border-zinc-100 focus:outline-none transition-colors">
               <option value="">Select a role...</option>
               {rolesList.map(r => <option key={r._id} value={r._id}>{r.name}</option>)}
             </select>
