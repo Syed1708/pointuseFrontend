@@ -21,7 +21,8 @@ import {
   FiX,
   FiSun,
   FiMoon, // 🛑 Added FiSun & FiMoon
-  FiCalendar 
+  FiCalendar,
+  FiCheckSquare 
 } from "react-icons/fi";
 import { logOut } from "../store/authSlice";
 import { useTheme } from "../context/ThemeContext"; // 🛑 Import useTheme
@@ -70,6 +71,7 @@ export default function DashboardLayout() {
     { to: '/dashboard/users', label: 'Users', icon: FiUsers, permission: 'employees:view' },
     { to: '/dashboard/employees', label: 'Employees', icon: FiUser, permission: 'employees:view' },
     { to: '/dashboard/roles', label: 'Roles', icon: FiShield, permission: 'employees:view' },
+     { to: '/dashboard/timesheets', label: 'Timesheets', icon: FiCheckSquare, permission: 'employees:view' },
     { to: '/dashboard/planning', label: 'Planning', icon: FiCalendar },
   ];
 

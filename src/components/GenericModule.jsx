@@ -41,7 +41,7 @@ export default function GenericModule({
           page,
           search: debouncedSearch,
           filter,
-          limit: 10
+          limit: 2
         }
       });
       return response.data; // Expects format: { docs: [], totalPages: 2, totalDocs: 14 }
