@@ -21,6 +21,7 @@ import socket from "./services/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import TimeclockTerminal from "./pages/Timeclock/TimeclockTerminal";
 import TimesheetsDashboard from "./pages/Timesheets/TimesheetsDashboard";
+import LeavesDashboard from "./pages/Leaves/LeavesDashboard";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -200,6 +201,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="leaves" element={<LeavesDashboard />} /> 
+
           <Route path="profile" element={<ProfileSettings />} />
 
           <Route path="planning" element={<PlanningRouter />} />
