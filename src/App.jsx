@@ -27,13 +27,13 @@ export default function App() {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const { user, loading } = useSelector((state) => state.auth);
-
+  const API_URL = import.meta.env.VITE_API_URL;
   // 1. Session Restoration on Mount
   useEffect(() => {
     const restoreSession = async () => {
       try {
         const res = await axios.post(
-          "http://localhost:5001/api/auth/refresh",
+          `${API_URL}/api/auth/refresh`,
           {},
           { withCredentials: true },
         );
@@ -41,7 +41,7 @@ export default function App() {
         const { accessToken } = res.data;
 
         const profileRes = await axios.get(
-          "http://localhost:5001/api/users/profile",
+          `${API_URL}/api/users/profile`,
           {
             headers: { Authorization: `Bearer ${accessToken}` },
           },

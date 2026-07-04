@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { store } from '../store';
 import { setCredentials, logOut } from '../store/authSlice';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: `${API_URL}/api`,
   withCredentials: true, // Crucial for reading/sending HttpOnly cookies
 });
 
@@ -28,7 +29,7 @@ api.interceptors.response.use(
       try {
         // Send refresh request to retrieve a new access token
         const res = await axios.post(
-          'http://localhost:5001/api/auth/refresh',
+          `${API_URL}/api/auth/refresh`,
           {},
           { withCredentials: true }
         );
@@ -36,7 +37,7 @@ api.interceptors.response.use(
         const { accessToken } = res.data;
 
         // Fetch full profile to keep user data updated
-        const profileRes = await axios.get('http://localhost:5001/api/users/profile', {
+        const profileRes = await axios.get(`${API_URL}/api/users/profile`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
 
