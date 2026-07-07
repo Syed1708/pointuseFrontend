@@ -29,6 +29,7 @@ import { logOut } from "../store/authSlice";
 import { useTheme } from "../context/ThemeContext"; // 🛑 Import useTheme
 import api from "../services/api";
 import NotificationBell from "./NotificationBell";
+import { useQuery } from "@tanstack/react-query";
 
 export default function DashboardLayout() {
   const { user } = useSelector((state) => state.auth);
@@ -36,6 +37,15 @@ export default function DashboardLayout() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+
+    // 🛑 1. FETCH LIVE RESTAURANT CONFIGURATION [3]
+  const { data: settings } = useQuery({
+    queryKey: ['live-settings'],
+    queryFn: async () => {
+      const res = await api.get('/settings');
+      return res.data;
+    }
+  });
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -75,6 +85,9 @@ export default function DashboardLayout() {
       { to: '/dashboard/leaves', label: 'Leaves / Congés', icon: FiCoffee }, // 🛑 ADD THIS LINE! (Everyone can view it)
      { to: '/dashboard/timesheets', label: 'Timesheets', icon: FiCheckSquare, permission: 'employees:view' },
     { to: '/dashboard/planning', label: 'Planning', icon: FiCalendar },
+
+        { to: '/dashboard/settings', label: 'Restaurant Settings', icon: FiSettings, permission: 'employees:view' }, 
+  
   ];
 
   // 🛑 2. FILTER navItems dynamically based on the current user's DB permissions [2]
@@ -87,19 +100,23 @@ export default function DashboardLayout() {
   // 🛑 Upgraded Sidebar with dark mode styles
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-white dark:bg-zinc-950 transition-colors">
+
+
+      {/* 🛑 3. UPGRADED BRAND HEADER: Displays dynamic brand Logo & Name! [2] */}
       <div className="flex h-16 items-center justify-between px-6 border-b border-zinc-200 dark:border-zinc-800">
         <Link to="/dashboard" className="flex items-center space-x-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 shadow-sm">
-            <FiZap className="h-5 w-5" />
-          </div>
-          <span className="font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
-            Pointuse
+          {settings?.logo ? (
+            <img src={settings.logo} className="h-9 w-9 rounded-lg object-contain" alt="" />
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900 shadow-sm">
+              <FiZap className="h-5 w-5" />
+            </div>
+          )}
+          <span className="font-bold text-zinc-900 dark:text-zinc-50 tracking-tight truncate max-w-35">
+            {settings?.name || 'Pointuse'}
           </span>
         </Link>
-        <button
-          onClick={() => setMobileMenuOpen(false)}
-          className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 md:hidden"
-        >
+        <button onClick={() => setMobileMenuOpen(false)} className="rounded p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 md:hidden">
           <FiX className="h-5 w-5" />
         </button>
       </div>

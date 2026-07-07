@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import TimeclockTerminal from "./pages/Timeclock/TimeclockTerminal";
 import TimesheetsDashboard from "./pages/Timesheets/TimesheetsDashboard";
 import LeavesDashboard from "./pages/Leaves/LeavesDashboard";
+import SettingsDashboard from "./pages/Settings/SettingsDashboard";
 
 export default function App() {
   const dispatch = useDispatch();
@@ -76,6 +77,10 @@ export default function App() {
           `🔌 Socket connected (${socket.id}). Registered User ID: ${userId}`,
         );
       });
+      socket.on('settings_updated', () => {
+      queryClient.invalidateQueries({ queryKey: ['live-settings'] }); // Instantly re-brands logo/name on everyone's screens [3]
+    });
+  
 
       // Listen for private, target-specific notifications [2]
       socket.on("notification_received", (notification) => {
@@ -131,6 +136,7 @@ export default function App() {
       socket.off("user_updated");
       socket.off("role_updated");
       socket.off("schedule_updated");
+      socket.off('settings_updated');
       socket.disconnect();
     };
   }, [user, queryClient]);
@@ -203,7 +209,7 @@ export default function App() {
           />
 
           <Route path="leaves" element={<LeavesDashboard />} /> 
-
+<Route path="settings" element={<ProtectedRoute requiredPermission="employees:view"><SettingsDashboard /></ProtectedRoute>} />
           <Route path="profile" element={<ProfileSettings />} />
 
           <Route path="planning" element={<PlanningRouter />} />
