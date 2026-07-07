@@ -1,32 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FiClock, FiCheck, FiX, FiCornerDownLeft, FiArrowLeft, 
-  FiLogIn, FiLogOut, FiHelpCircle, FiChevronRight 
+  FiLogIn, FiLogOut, FiHelpCircle, FiChevronRight, FiCoffee 
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 export default function TimeclockTerminal() {
   const [time, setTime] = useState(new Date());
-  const [action, setAction] = useState('arriver'); // 'arriver' or 'depart'
+  const [action, setAction] = useState('arriver'); // 'arriver', 'pause_start', 'pause_end', 'depart'
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorErrorMsg] = useState('');
 
-  // State Machine Phases
-  const [pendingConfirm, setPendingConfirm] = useState(null); // Step 1 Success -> { employee, action }
-  const [successData, setSuccessData] = useState(null);       // Step 2 Success -> { employee, message, time, action }
+  // Sockets & Modals State
+  const [pendingConfirm, setPendingConfirm] = useState(null); 
+  const [successData, setSuccessData] = useState(null);       
 
-  // 1. Live clock update
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Handle Keypad Input (Strictly limited to 4 digits)
   const handleKeyPress = (num) => {
-    if (pendingConfirm || successData) return; // Freeze inputs on other screens
+    if (pendingConfirm || successData) return; 
     setErrorErrorMsg('');
-    if (pin.length < 4) { // 🛑 1. STRICT 4 DIGITS LIMIT
+    if (pin.length < 4) { 
       setPin((prev) => prev + num);
     }
   };
@@ -36,20 +34,36 @@ export default function TimeclockTerminal() {
     setErrorErrorMsg('');
   };
 
-  // 3. STEP 1: Verify PIN on Backend
+  // 🛑 1. GET GPS COORDINATES & VERIFY [2]
   const handleVerifyPin = async (currentPin = pin) => {
-    // 🛑 2. Verify we have exactly 4 digits [3]
     if (!currentPin || currentPin.length !== 4) {
       return setErrorErrorMsg('Veuillez entrer un code PIN à 4 chiffres.');
     }
 
+    // Ask browser for GPS coordinates [2]
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        await submitVerification(currentPin, latitude, longitude); // Send with GPS [2]
+      },
+      async (error) => {
+        // If GPS is disabled by browser, still try (backend will check if coordinates are required)
+        console.warn("GPS Access blocked by browser. Attempting without coordinates.");
+        await submitVerification(currentPin, null, null);
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  };
+
+  const submitVerification = async (currentPin, latitude, longitude) => {
     try {
       const res = await api.post('/timeclock/verify', {
         pinCode: currentPin,
-        action: action
+        action,
+        latitude, // 🛑 Sends GPS to backend [2]
+        longitude
       });
 
-      // Verification passed -> Show Confirmation Screen
       setPendingConfirm(res.data);
       setErrorErrorMsg('');
     } catch (err) {
@@ -58,14 +72,14 @@ export default function TimeclockTerminal() {
     }
   };
 
-  // 🛑 3. AUTO-SUBMIT TRIGGER: Automatically validates once the 4th digit is typed! [3]
+  // Auto-submit once the 4th digit is typed [3]
   useEffect(() => {
     if (pin.length === 4) {
       handleVerifyPin(pin);
     }
   }, [pin]);
 
-  // 4. STEP 2: Officially Confirm and Commit Punch
+  // STEP 2: Officially Confirm and Commit Punch
   const handleConfirmPunch = async () => {
     if (!pendingConfirm) return;
 
@@ -79,7 +93,6 @@ export default function TimeclockTerminal() {
       setPendingConfirm(null);
       setPin('');
 
-      // Auto-reset terminal back to keypad after 3.5 seconds
       setTimeout(() => {
         setSuccessData(null);
       }, 3500);
@@ -111,7 +124,7 @@ export default function TimeclockTerminal() {
         </p>
       </div>
 
-      <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900/90 p-8 shadow-2xl transition-all min-h-115 flex flex-col justify-center">
+      <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-900/90 p-8 shadow-2xl transition-all min-h-[460px] flex flex-col justify-center">
         
         {/* PHASE 3: SUCCESS SPLASH SCREEN */}
         {successData ? (
@@ -180,33 +193,58 @@ export default function TimeclockTerminal() {
               </div>
             )}
 
-            {/* In / Out Selection Buttons */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* 🛑 2. UPGRADED: 4-WAY SELECTION BAR */}
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setAction('arriver')}
-                className={`flex items-center justify-center rounded-xl border py-3 text-sm font-bold transition-all ${
+                className={`flex items-center justify-center rounded-xl border py-3 text-xs font-bold transition-all ${
                   action === 'arriver'
                     ? 'bg-zinc-50 border-zinc-50 text-zinc-950 shadow-md scale-[1.02]'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                    : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <FiLogIn className="mr-2 h-4 w-4" /> Arriver
+                <FiLogIn className="mr-1.5 h-3.5 w-3.5" /> Arriver
               </button>
+              
+              <button
+                type="button"
+                onClick={() => setAction('pause_start')}
+                className={`flex items-center justify-center rounded-xl border py-3 text-xs font-bold transition-all ${
+                  action === 'pause_start'
+                    ? 'bg-amber-50 border-amber-50 text-amber-950 shadow-md scale-[1.02]'
+                    : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <FiCoffee className="mr-1.5 h-3.5 w-3.5" /> Début Pause
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAction('pause_end')}
+                className={`flex items-center justify-center rounded-xl border py-3 text-xs font-bold transition-all ${
+                  action === 'pause_end'
+                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-md scale-[1.02]'
+                    : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <FiCheck className="mr-1.5 h-3.5 w-3.5" /> Fin Pause
+              </button>
+
               <button
                 type="button"
                 onClick={() => setAction('depart')}
-                className={`flex items-center justify-center rounded-xl border py-3 text-sm font-bold transition-all ${
+                className={`flex items-center justify-center rounded-xl border py-3 text-xs font-bold transition-all ${
                   action === 'depart'
                     ? 'bg-zinc-50 border-zinc-50 text-zinc-950 shadow-md scale-[1.02]'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                    : 'bg-zinc-900 border-zinc-850 text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <FiLogOut className="mr-2 h-4 w-4" /> Départ
+                <FiLogOut className="mr-1.5 h-3.5 w-3.5" /> Départ
               </button>
             </div>
 
-            {/* 🛑 4. RENDER 4 DISPLAY DOTS INSTEAD OF 6 [3] */}
+            {/* Hidden Input Display Dots */}
             <div className="flex justify-center space-x-4 py-1">
               {[...Array(4)].map((_, idx) => (
                 <div
@@ -232,7 +270,6 @@ export default function TimeclockTerminal() {
                   {num}
                 </button>
               ))}
-              {/* Clear button */}
               <button
                 type="button"
                 onClick={handleClear}
@@ -240,7 +277,6 @@ export default function TimeclockTerminal() {
               >
                 EFFACER
               </button>
-              {/* 0 Button (Spans across bottom remaining columns elegantly) */}
               <button
                 type="button"
                 onClick={() => handleKeyPress(0)}
@@ -253,7 +289,6 @@ export default function TimeclockTerminal() {
         )}
       </div>
 
-      {/* Back to main portal link */}
       {!successData && (
         <a 
           href="/login" 
