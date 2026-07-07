@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { 
   FiCalendar, FiClock, FiCoffee, FiChevronLeft, 
-  FiChevronRight, FiDownload, FiBriefcase 
+  FiChevronRight, FiDownload, FiBriefcase, FiRefreshCw // 🛑 Added FiRefreshCw
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import SwapRequestModal from './SwapRequestModal'; // 🛑 Imported Swap Request Modal
 
 // Helper: Calculate ISO Week Number
 const getWeekNumber = (d) => {
@@ -51,6 +52,9 @@ export default function PlanningEmployee() {
   const { user } = useSelector((state) => state.auth);
   const [currentWeekStart, setCurrentWeekStart] = useState(getMonday(new Date()));
 
+  // 🛑 FIXED: State declared correctly inside the component [3]
+  const [selectedSwapShift, setSelectedSwapShift] = useState(null); // stores { date, index, shiftDetails }
+
   const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -67,7 +71,7 @@ export default function PlanningEmployee() {
   const handleDownloadPersonalPDF = async () => {
     try {
       const response = await api.get(`/schedules/my-schedule-pdf?weekStartDate=${currentWeekStart}`, {
-        responseType: 'blob' // Receives binary stream
+        responseType: 'blob' 
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -83,15 +87,23 @@ export default function PlanningEmployee() {
   };
 
   const handleNextWeek = () => {
-    const nextMon = new Date(currentWeekStart);
+    const nextMon = new Date(currentWeekStart.replace(/-/g, '/'));
     nextMon.setDate(nextMon.getDate() + 7);
-    setCurrentWeekStart(nextMon.toISOString().split('T')[0]);
+    
+    const year = nextMon.getFullYear();
+    const month = String(nextMon.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(nextMon.getDate()).padStart(2, '0');
+    setCurrentWeekStart(`${year}-${month}-${dayStr}`);
   };
 
   const handlePrevWeek = () => {
-    const prevMon = new Date(currentWeekStart);
+    const prevMon = new Date(currentWeekStart.replace(/-/g, '/'));
     prevMon.setDate(prevMon.getDate() - 7);
-    setCurrentWeekStart(prevMon.toISOString().split('T')[0]);
+    
+    const year = prevMon.getFullYear();
+    const month = String(prevMon.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(prevMon.getDate()).padStart(2, '0');
+    setCurrentWeekStart(`${year}-${month}-${dayStr}`);
   };
 
   return (
@@ -102,7 +114,7 @@ export default function PlanningEmployee() {
         <div>
           {/* Dynamic Title Headers [3] */}
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
-            Semaine de {getWeekNumber(new Date(currentWeekStart))} - {getWeekRangeString(currentWeekStart)}
+            Semaine de {getWeekNumber(currentWeekStart)} - {getWeekRangeString(currentWeekStart)}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
             Overview of your active personal shifts and timecards.
@@ -116,7 +128,7 @@ export default function PlanningEmployee() {
             <button onClick={handleNextWeek} className="rounded p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"><FiChevronRight className="h-4 w-4" /></button>
           </div>
 
-          {/* 🛑 PDF DOWNLOAD BUTTON (Only triggers if schedule is loaded) */}
+          {/* PDF DOWNLOAD BUTTON */}
           <button 
             onClick={handleDownloadPersonalPDF}
             disabled={!schedule}
@@ -160,7 +172,6 @@ export default function PlanningEmployee() {
               <div key={dayKey} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 shadow-sm transition-colors flex flex-col justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 capitalize flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2 mb-3">
-                    {/* 🛑 Display Day & Dynamic Date Label (e.g. "Monday - 22-06") [3] */}
                     <span>{dayLabels[idx]} <span className="text-xs font-semibold text-zinc-400">({getDayDateString(currentWeekStart, idx)})</span></span>
                     
                     {day.isOff && <span className="text-[10px] bg-zinc-100 dark:bg-zinc-900 text-zinc-500 px-2 py-0.5 rounded font-bold border border-zinc-200 dark:border-zinc-800">Repos</span>}
@@ -171,19 +182,36 @@ export default function PlanningEmployee() {
                     {day.isOff && <p className="text-xs text-zinc-400 italic py-2">Rest day</p>}
                     {day.isLeave && <p className="text-xs text-zinc-400 italic py-2">Paid Leave ({day.leaveHours}h)</p>}
                     
-                    {!day.isOff && !day.isLeave && day.shifts?.map((s, sIdx) => (
-                      <div key={sIdx} className="rounded-lg bg-zinc-50 dark:bg-zinc-900/50 p-3 border border-zinc-100 dark:border-zinc-850">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center">
-                            <FiClock className="mr-1.5 h-3.5 w-3.5 text-indigo-500" /> {s.startTime} - {s.endTime}
-                          </span>
-                          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded font-semibold capitalize border border-indigo-100 dark:border-indigo-900/30">{s.task}</span>
+                    {!day.isOff && !day.isLeave && day.shifts?.map((s, sIdx) => {
+                      // Calculate the YYYY-MM-DD date string for this specific day of the week [3]
+                      const date = new Date(currentWeekStart.replace(/-/g, '/'));
+                      date.setDate(date.getDate() + idx);
+                      const dateStr = date.toISOString().split('T')[0];
+
+                      return (
+                        <div key={sIdx} className="relative group rounded-lg bg-zinc-50 dark:bg-zinc-900/50 p-3 border border-zinc-100 dark:border-zinc-850">
+                          
+                          {/* 🛑 UPGRADED: SWAP TRIGGER ICON BUTTON (Fades in on Hover) [2] */}
+                          <button
+                            onClick={() => setSelectedSwapShift({ date: dateStr, index: sIdx, time: `${s.startTime} - ${s.endTime}` })}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 rounded-full p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                            title="Request a shift swap"
+                          >
+                            <FiRefreshCw className="h-3.5 w-3.5" />
+                          </button>
+
+                          <div className="flex items-center justify-between pr-5"> {/* pr-5 prevents overlap with the icon */}
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center">
+                              <FiClock className="mr-1.5 h-3.5 w-3.5 text-indigo-500" /> {s.startTime} - {s.endTime}
+                            </span>
+                            <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded font-semibold capitalize border border-indigo-100 dark:border-indigo-900/30">{s.task}</span>
+                          </div>
+                          <div className="mt-2 flex items-center text-[10px] text-zinc-400">
+                            <FiCoffee className="mr-1 h-3.5 w-3.5" /> Break: {s.breakMinutes} min
+                          </div>
                         </div>
-                        <div className="mt-2 flex items-center text-[10px] text-zinc-400">
-                          <FiCoffee className="mr-1 h-3.5 w-3.5" /> Break: {s.breakMinutes} min
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -191,6 +219,15 @@ export default function PlanningEmployee() {
           })}
         </div>
       )}
+
+      {/* 🛑 MOUNT THE SWAP REQUEST FORM MODAL AT THE BOTTOM [2] */}
+      <SwapRequestModal
+        isOpen={!!selectedSwapShift}
+        onClose={() => setSelectedSwapShift(null)}
+        senderDate={selectedSwapShift?.date}
+        senderShiftIndex={selectedSwapShift?.index}
+        senderShiftTime={selectedSwapShift?.time}
+      />
     </div>
   );
 }
