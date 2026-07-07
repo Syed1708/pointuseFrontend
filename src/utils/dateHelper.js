@@ -1,4 +1,3 @@
-// frontend/src/utils/dateHelper.js
 
 // Helper: Safely converts a YYYY-MM-DD or YYYY/MM/DD string into a local Date object [3]
 const parseLocalString = (dateString) => {

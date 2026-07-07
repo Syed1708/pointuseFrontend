@@ -6,8 +6,10 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiZap, FiGithub } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
-import api from '../services/api';
 import { setCredentials } from '../store/authSlice';
+import { useTranslation } from 'react-i18next'; // 🛑 i18n Import [1]
+import { authService } from '../services/authService'; 
+
 
 // 1. Zod Validation Schema
 const loginSchema = z.object({
@@ -19,6 +21,7 @@ export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [apiError, setApiError] = useState('');
+  const { t } = useTranslation(); // 🛑 Extract Translation tools [1]
 
   // 2. Connect React Hook Form
   const {
@@ -33,14 +36,15 @@ export default function Login() {
   const onSubmit = async (data) => {
     setApiError('');
     try {
-      const res = await api.post('/auth/login', {
-        email: data.email,
-        password: data.password,
-      });
+      // const res = await api.post('/auth/login', {
+      //   email: data.email,
+      //   password: data.password,
+      // });
+       const res = await authService.login(data.email, data.password); // Clean service call
 
       dispatch(setCredentials({
-        user: res.data.user,
-        accessToken: res.data.accessToken,
+        user: res.user,
+        accessToken: res.accessToken,
       }));
 
       navigate('/dashboard');
@@ -51,21 +55,23 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12">
-      {/* Subtle Background Grid Grid decoration (Shadcn Style) */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
+      {/* Subtle Background Grid decoration */}
+      <div className="absolute inset-0 -z-10 h-full w-full bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] bg-size-[16px_16px] mask-[radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
-      <div className="w-full max-w-[400px] space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-100 space-y-6 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm">
         {/* Header Block */}
         <div className="flex flex-col space-y-2 text-center">
           {/* Logo */}
           <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900 text-zinc-50 shadow-sm">
             <FiZap className="h-5 w-5" />
           </div>
+          {/* 🛑 UPGRADED: Translated title [2] */}
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            Welcome back
+            {t('login.welcome')}
           </h1>
+          {/* 🛑 UPGRADED: Translated subtitle [2] */}
           <p className="text-sm text-zinc-500">
-            Enter your email below to sign in to your account
+            {t('login.subtitle')}
           </p>
         </div>
 
@@ -109,8 +115,9 @@ export default function Login() {
           <div className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
+              {/* 🛑 UPGRADED: Translated Email label [2] */}
               <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                Email Address
+                {t('login.email')}
               </label>
               <div className="relative">
                 <FiMail className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
@@ -131,11 +138,13 @@ export default function Login() {
             {/* Password */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
+                {/* 🛑 UPGRADED: Translated Password label [2] */}
                 <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                  Password
+                  {t('login.password')}
                 </label>
+                {/* 🛑 UPGRADED: Translated Forgot link [2] */}
                 <a href="#forgot" className="text-xs text-zinc-500 hover:text-zinc-900 hover:underline">
-                  Forgot password?
+                  {t('login.forgot')}
                 </a>
               </div>
               <div className="relative">
@@ -155,12 +164,13 @@ export default function Login() {
             </div>
           </div>
 
+          {/* 🛑 UPGRADED: Translated submit button and loading/signingin state [2] */}
           <button
             type="submit"
             disabled={isSubmitting}
             className="flex w-full items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-zinc-50 shadow-sm hover:bg-zinc-800 active:scale-[0.98] transition disabled:bg-zinc-500"
           >
-            {isSubmitting ? 'Signing in...' : 'Sign In with Email'}
+            {isSubmitting ? t('common.loading') : t('login.signin')}
           </button>
         </form>
 

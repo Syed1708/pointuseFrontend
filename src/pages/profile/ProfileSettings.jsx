@@ -8,7 +8,7 @@ import {
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
-import api from '../../services/api';
+import { userService } from '../../services/userService'; 
 import { updateUser } from '../../store/authSlice';
 import { editProfileSchema, changePasswordSchema } from './profileValidation';
 
@@ -43,8 +43,9 @@ export default function ProfileSettings() {
           // 🛑 Safe check: uses user._id if it exists, otherwise falls back to user.id [2]
     const userId = user._id || user.id; 
     
-    const res = await api.put(`/users/${userId}`, data);
-      
+    // const res = await api.put(`/users/${userId}`, data);
+      const res = await userService.updateProfile(userId, data); // Clean service call [2, 3]
+
       // Update local Redux store user object state [2]
       dispatch(updateUser({ name: res.data.user.name, email: res.data.user.email }));
       toast.success('Profile details updated successfully.');
@@ -69,9 +70,10 @@ export default function ProfileSettings() {
     formData.append('avatar', file); // 'avatar' matches req.file name in Multer [3]
 
     try {
-      const res = await api.post('/users/upload-avatar', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // const res = await api.post('/users/upload-avatar', formData, {
+      //   headers: { 'Content-Type': 'multipart/form-data' }
+      // });
+      const res = await userService.uploadAvatar(formData); // Clean service call [3]
 
       // Instantly update Redux store with the new URL [2]
       dispatch(updateUser({ avatar: res.data.avatar }));
@@ -95,10 +97,14 @@ export default function ProfileSettings() {
 
   const onPasswordSubmit = async (data) => {
     try {
-      await api.post('/users/change-password', {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      });
+
+
+      // await api.post('/users/change-password', {
+      //   currentPassword: data.currentPassword,
+      //   newPassword: data.newPassword,
+      // });
+
+      await userService.changePassword(data.currentPassword, data.newPassword); 
 
       toast.success('Your password has been changed successfully.');
       resetPasswordForm(); // Clears password inputs safely

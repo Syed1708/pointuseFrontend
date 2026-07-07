@@ -23,38 +23,49 @@ import TimeclockTerminal from "./pages/Timeclock/TimeclockTerminal";
 import TimesheetsDashboard from "./pages/Timesheets/TimesheetsDashboard";
 import LeavesDashboard from "./pages/Leaves/LeavesDashboard";
 import SettingsDashboard from "./pages/Settings/SettingsDashboard";
+import { authService } from "./services/authService";
+import { userService } from "./services/userService";
 
 export default function App() {
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const { user, loading } = useSelector((state) => state.auth);
   const API_URL = import.meta.env.VITE_API_URL;
+
+  
   // 1. Session Restoration on Mount
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const res = await axios.post(
-          `${API_URL}/api/auth/refresh`,
-          {},
-          { withCredentials: true },
-        );
+        // const res = await axios.post(
+        //   `${API_URL}/api/auth/refresh`,
+        //   {},
+        //   { withCredentials: true },
+        // );
 
-        const { accessToken } = res.data;
+        // const res = await authService.refresh(); 
+        // const { accessToken } = res.data;
 
-        const profileRes = await axios.get(
-          `${API_URL}/api/users/profile`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          },
-        );
+        // const profileRes = await axios.get(`${API_URL}/api/users/profile`, {
+        //   headers: { Authorization: `Bearer ${accessToken}` },
+        // });
+
+        // 1. Refresh the token (authService.refresh() returns { accessToken } directly) [3]
+      const refreshData = await authService.refresh(); 
+      const accessToken = refreshData.accessToken;
+
+      // 2. Fetch the profile by passing the token manually to bypass the empty Redux state [2, 3]
+      const profileData = await userService.getProfile(accessToken); 
 
         dispatch(
           setCredentials({
-            user: profileRes.data,
+            // user: profileRes.data,
+            user: profileData,
             accessToken,
           }),
         );
       } catch (err) {
+        //console.error("❌ Silent Session Restoration failed:", err.message);
         dispatch(logOut());
       } finally {
         dispatch(setLoading(false));
@@ -77,10 +88,9 @@ export default function App() {
           `🔌 Socket connected (${socket.id}). Registered User ID: ${userId}`,
         );
       });
-      socket.on('settings_updated', () => {
-      queryClient.invalidateQueries({ queryKey: ['live-settings'] }); // Instantly re-brands logo/name on everyone's screens [3]
-    });
-  
+      socket.on("settings_updated", () => {
+        queryClient.invalidateQueries({ queryKey: ["live-settings"] }); // Instantly re-brands logo/name on everyone's screens [3]
+      });
 
       // Listen for private, target-specific notifications [2]
       socket.on("notification_received", (notification) => {
@@ -136,7 +146,7 @@ export default function App() {
       socket.off("user_updated");
       socket.off("role_updated");
       socket.off("schedule_updated");
-      socket.off('settings_updated');
+      socket.off("settings_updated");
       socket.disconnect();
     };
   }, [user, queryClient]);
@@ -208,8 +218,15 @@ export default function App() {
             }
           />
 
-          <Route path="leaves" element={<LeavesDashboard />} /> 
-<Route path="settings" element={<ProtectedRoute requiredPermission="employees:view"><SettingsDashboard /></ProtectedRoute>} />
+          <Route path="leaves" element={<LeavesDashboard />} />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute requiredPermission="employees:view">
+                <SettingsDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route path="profile" element={<ProfileSettings />} />
 
           <Route path="planning" element={<PlanningRouter />} />

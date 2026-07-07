@@ -7,6 +7,9 @@ import { FiCheck, FiX, FiClock, FiCalendar, FiSend, FiRefreshCw } from "react-ic
 import toast from "react-hot-toast";
 import api from "../../services/api";
 import { leaveRequestSchema } from "./leaveValidation";
+import { leaveService } from '../../services/leaveService'; 
+import { swapService } from '../../services/swapService'; 
+
 
 const formatCalendarDate = (dateStr) => {
   if (!dateStr) return "-";
@@ -22,26 +25,31 @@ export default function LeavesDashboard() {
   // Fetch employee's own requests OR admin's full requests list
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["leaves", isManagerOrAdmin ? "admin" : "my"],
-    queryFn: async () => {
-      const endpoint = isManagerOrAdmin
-        ? "/leaves/admin/list"
-        : "/leaves/my-requests";
-      const res = await api.get(endpoint);
-      return res.data;
-    },
+    // queryFn: async () => {
+    //   const endpoint = isManagerOrAdmin
+    //     ? "/leaves/admin/list"
+    //     : "/leaves/my-requests";
+    //   const res = await api.get(endpoint);
+    //   return res.data;
+    // },
+    queryFn: () => isManagerOrAdmin ? leaveService.getAdminList() : leaveService.getMyRequests() // Clean service calls [3]
+  
   });
 
   // Inside LeavesDashboard.jsx (Add this new fetch query next to leaves query):
 
   const { data: swaps = [], isLoading: isSwapsLoading } = useQuery({
     queryKey: ["swaps", isManagerOrAdmin ? "admin" : "my"],
-    queryFn: async () => {
-      const endpoint = isManagerOrAdmin
-        ? "/swaps/admin/list"
-        : "/swaps/my-swaps";
-      const res = await api.get(endpoint);
-      return res.data;
-    },
+    // queryFn: async () => {
+    //   const endpoint = isManagerOrAdmin
+    //     ? "/swaps/admin/list"
+    //     : "/swaps/my-swaps";
+    //   const res = await api.get(endpoint);
+    //   return res.data;
+    // },
+
+     queryFn: () => isManagerOrAdmin ? swapService.getAdminList() : swapService.getMySwaps()
+
   });
 
   // Submit Request Form setup
@@ -56,9 +64,10 @@ export default function LeavesDashboard() {
   });
 
   const submitRequestMutation = useMutation({
-    mutationFn: async (formData) => {
-      await api.post("/leaves", formData);
-    },
+    // mutationFn: async (formData) => {
+    //   await api.post("/leaves", formData);
+    // },
+     mutationFn: (formData) => leaveService.submit(formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leaves"] });
       toast.success("Leave request submitted successfully!");
@@ -71,9 +80,10 @@ export default function LeavesDashboard() {
 
   // Approve/Reject Request Mutation
   const handleStatusMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      await api.put(`/leaves/admin/${id}/status`, { status });
-    },
+    // mutationFn: async ({ id, status }) => {
+    //   await api.put(`/leaves/admin/${id}/status`, { status });
+    // },
+     mutationFn: ({ id, status }) => leaveService.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leaves"] });
       toast.success("Request successfully processed.");
@@ -87,9 +97,10 @@ export default function LeavesDashboard() {
 
   // Employee responds to colleague's request (Accept/Decline) [2]
   const peerRespondMutation = useMutation({
-    mutationFn: async ({ id, accept }) => {
-      await api.put(`/swaps/${id}/respond`, { accept });
-    },
+    // mutationFn: async ({ id, accept }) => {
+    //   await api.put(`/swaps/${id}/respond`, { accept });
+    // },
+    mutationFn: ({ id, accept }) => swapService.respond(id, accept),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["swaps"] });
       toast.success("Response successfully sent!");
@@ -98,9 +109,10 @@ export default function LeavesDashboard() {
 
   // Manager finalizes swap (Approve/Reject) [2]
   const managerFinalizeMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      await api.put(`/swaps/admin/${id}/status`, { status });
-    },
+    // mutationFn: async ({ id, status }) => {
+    //   await api.put(`/swaps/admin/${id}/status`, { status });
+    // },
+    mutationFn: ({ id, status }) => swapService.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["swaps"] });
       toast.success("Shift swap approved and applied to planning!");
@@ -174,7 +186,7 @@ export default function LeavesDashboard() {
                 </label>
                 <select
                   {...register("reason")}
-                  className="mt-1 block w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none bg-white dark:bg-zinc-900"
+                  className="mt-1 block w-full rounded-lg border border-zinc-200 dark:border-zinc-800 p-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none bg-white dark:bg-zinc-900"
                 >
                   <option value="vacances">Vacances (Vacation)</option>
                   <option value="maladie">Maladie (Sickness)</option>
@@ -330,7 +342,7 @@ export default function LeavesDashboard() {
                             </span>
                             {row.note && (
                               <p
-                                className="text-[10px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate"
+                                className="text-[10px] text-zinc-400 dark:text-zinc-500 italic max-w-37.5 truncate"
                                 title={row.note}
                               >
                                 "{row.note}"

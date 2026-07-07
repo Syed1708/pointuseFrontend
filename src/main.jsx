@@ -9,6 +9,7 @@ import { store } from "./store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import './lang';
 
 const queryClient = new QueryClient({
   defaultOptions: {
