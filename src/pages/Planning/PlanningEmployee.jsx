@@ -3,56 +3,32 @@ import { useQuery } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import { 
   FiCalendar, FiClock, FiCoffee, FiChevronLeft, 
-  FiChevronRight, FiDownload, FiBriefcase, FiRefreshCw // 🛑 Added FiRefreshCw
+  FiChevronRight, FiDownload, FiBriefcase, FiRefreshCw
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
-import SwapRequestModal from './SwapRequestModal'; // 🛑 Imported Swap Request Modal
 
-// Helper: Calculate ISO Week Number
-const getWeekNumber = (d) => {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-};
+// 🛑 Import the centralized, timezone-safe date helpers [3]
+import { getMonday, getWeekNumber, getDayDateString, getWeekRangeString } from '../../utils/dateHelper';
+import SwapRequestModal from './SwapRequestModal'; 
 
-// Helper: Format Single Days (e.g. "22-06")
-const getDayDateString = (mondayString, offsetDays) => {
-  const date = new Date(mondayString);
+// 🛑 NEW: Timezone-proof local YYYY-MM-DD generator (Prevents UTC day shifting) [1.1.4]
+const getShiftDateString = (mondayString, offsetDays) => {
+  if (!mondayString) return '';
+  const date = new Date(String(mondayString).replace(/-/g, '/')); // Force slash parsing [1.1.4]
+  if (isNaN(date.getTime())) return '';
+
   date.setDate(date.getDate() + offsetDays);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  return `${day}-${month}`;
-};
-
-// Helper: Format Week Ranges (e.g. "22-06-2026 to 28-06-2026")
-const getWeekRangeString = (mondayString) => {
-  const start = new Date(mondayString);
-  const end = new Date(mondayString);
-  end.setDate(end.getDate() + 6);
   
-  const formatDate = (d) => {
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${day}-${month}-${d.getFullYear()}`;
-  };
-  return `${formatDate(start)} to ${formatDate(end)}`;
-};
-
-const getMonday = (d) => {
-  const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(date.setDate(diff)).toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const dayStr = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${dayStr}`; // Returns perfect local YYYY-MM-DD (no timezone shifts) [1.1.4]
 };
 
 export default function PlanningEmployee() {
   const { user } = useSelector((state) => state.auth);
   const [currentWeekStart, setCurrentWeekStart] = useState(getMonday(new Date()));
-
-  // 🛑 FIXED: State declared correctly inside the component [3]
   const [selectedSwapShift, setSelectedSwapShift] = useState(null); // stores { date, index, shiftDetails }
 
   const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -77,7 +53,7 @@ export default function PlanningEmployee() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `My_Planning_Semaine_${getWeekNumber(new Date(currentWeekStart))}.pdf`);
+      link.setAttribute('download', `My_Planning_Semaine_${getWeekNumber(currentWeekStart)}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -107,12 +83,11 @@ export default function PlanningEmployee() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-150">
       
       {/* Header Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
-          {/* Dynamic Title Headers [3] */}
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
             Semaine de {getWeekNumber(currentWeekStart)} - {getWeekRangeString(currentWeekStart)}
           </h1>
@@ -122,7 +97,7 @@ export default function PlanningEmployee() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Week Navigators [3] */}
+          {/* Week Navigators */}
           <div className="flex space-x-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-1 shadow-sm">
             <button onClick={handlePrevWeek} className="rounded p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"><FiChevronLeft className="h-4 w-4" /></button>
             <button onClick={handleNextWeek} className="rounded p-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400"><FiChevronRight className="h-4 w-4" /></button>
@@ -183,15 +158,13 @@ export default function PlanningEmployee() {
                     {day.isLeave && <p className="text-xs text-zinc-400 italic py-2">Paid Leave ({day.leaveHours}h)</p>}
                     
                     {!day.isOff && !day.isLeave && day.shifts?.map((s, sIdx) => {
-                      // Calculate the YYYY-MM-DD date string for this specific day of the week [3]
-                      const date = new Date(currentWeekStart.replace(/-/g, '/'));
-                      date.setDate(date.getDate() + idx);
-                      const dateStr = date.toISOString().split('T')[0];
+                      // 🛑 5. FIXED: Use our new timezone-safe YYYY-MM-DD generator [1.1.4]
+                      const dateStr = getShiftDateString(currentWeekStart, idx);
 
                       return (
-                        <div key={sIdx} className="relative group rounded-lg bg-zinc-50 dark:bg-zinc-900/50 p-3 border border-zinc-100 dark:border-zinc-850">
+                        <div key={sIdx} className="relative group rounded-lg bg-zinc-50 dark:bg-zinc-900/50 p-3 border border-zinc-100 dark:border-zinc-855">
                           
-                          {/* 🛑 UPGRADED: SWAP TRIGGER ICON BUTTON (Fades in on Hover) [2] */}
+                          {/* SWAP TRIGGER ICON BUTTON (Fades in on Hover) [2] */}
                           <button
                             onClick={() => setSelectedSwapShift({ date: dateStr, index: sIdx, time: `${s.startTime} - ${s.endTime}` })}
                             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 rounded-full p-1.5 text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
@@ -200,7 +173,7 @@ export default function PlanningEmployee() {
                             <FiRefreshCw className="h-3.5 w-3.5" />
                           </button>
 
-                          <div className="flex items-center justify-between pr-5"> {/* pr-5 prevents overlap with the icon */}
+                          <div className="flex items-center justify-between pr-5"> 
                             <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center">
                               <FiClock className="mr-1.5 h-3.5 w-3.5 text-indigo-500" /> {s.startTime} - {s.endTime}
                             </span>
@@ -220,7 +193,7 @@ export default function PlanningEmployee() {
         </div>
       )}
 
-      {/* 🛑 MOUNT THE SWAP REQUEST FORM MODAL AT THE BOTTOM [2] */}
+      {/* Mount the Swap Request Modal */}
       <SwapRequestModal
         isOpen={!!selectedSwapShift}
         onClose={() => setSelectedSwapShift(null)}

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { FiRefreshCw, FiCalendar, FiArrowRight } from 'react-icons/fi';
+import { FiRefreshCw, FiCalendar, FiChevronRight } from 'react-icons/fi';
 import api from '../../services/api';
 import Modal from '../../components/Modal';
+import { getMonday } from '../../utils/dateHelper'; // 🛑 FIXED: Import helper [3]
 
 const formatCalendarDate = (dateStr) => {
   if (!dateStr) return '';
@@ -17,44 +18,48 @@ export default function SwapRequestModal({ isOpen, onClose, senderDate, senderSh
 
   // 1. Fetch available colleagues list (Excluding ourselves)
   const { data: colleagues = [] } = useQuery({
-    queryKey: ['employees-list-swap'],
+    queryKey: ['employees-colleagues-list'],
     queryFn: async () => {
-      const res = await api.get('/employees');
-      return res.data?.docs || res.data;
+      const res = await api.get('/employees/colleagues'); // Uses secure colleagues list [2]
+      return res.data;
     },
     enabled: isOpen
   });
 
-  const colleaguesList = Array.isArray(colleagues) ? colleagues : (colleagues.docs || []);
+  const colleaguesList = Array.isArray(colleagues) ? colleagues : [];
 
   // 2. Fetch the selected colleague's weekly schedule [3]
   const { data: colleagueSchedule, isLoading: isScheduleLoading } = useQuery({
     queryKey: ['colleague-schedule', receiverId, senderDate],
     queryFn: async () => {
-      const res = await api.get(`/schedules/my-schedule?weekStartDate=${senderDate}&employeeId=${receiverId}`);
-      // Wait, let's get the standard published schedule for this colleague
-      const resGrid = await api.get(`/schedules/grid?weekStartDate=${senderDate}`);
-      const match = resGrid.data.find(item => item.employee._id === receiverId);
-      return match?.schedule;
+      const mondayString = getMonday(senderDate); // Always resolve to Monday first [3]
+      const res = await api.get(`/schedules/my-schedule?weekStartDate=${mondayString}&employeeId=${receiverId}`);
+      return res.data;
     },
     enabled: !!receiverId && isOpen
   });
 
-  // Extract active shifts from the colleague's schedule
+  // 3. Extract active shifts from the colleague's schedule
   const getColleagueShiftsList = () => {
     if (!colleagueSchedule) return [];
     const list = [];
     const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const weekdaysLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+    const mondayString = getMonday(senderDate); // 🛑 FIXED: Base calculation strictly on Monday [3]
+
     weekdays.forEach((dayKey, idx) => {
       const day = colleagueSchedule.days[dayKey];
       if (day && !day.isOff && !day.isLeave && day.shifts) {
         day.shifts.forEach((s, sIdx) => {
-          // Calculate the YYYY-MM-DD date for this weekday
-          const date = new Date(senderDate);
+          // Calculate the YYYY-MM-DD date safely for each weekday [3]
+          const date = new Date(mondayString.replace(/-/g, '/')); // Force slash parsing [1.1.4]
           date.setDate(date.getDate() + idx);
-          const dateStr = date.toISOString().split('T')[0];
+          
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const dayStr = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${dayStr}`;
 
           list.push({
             date: dateStr,
@@ -71,7 +76,7 @@ export default function SwapRequestModal({ isOpen, onClose, senderDate, senderSh
 
   const colleagueShifts = getColleagueShiftsList();
 
-  // 3. Mutation: Submit Swap Request [2, 3]
+  // 4. Mutation: Submit Swap Request [2, 3]
   const submitSwapMutation = useMutation({
     mutationFn: async () => {
       await api.post('/swaps', {

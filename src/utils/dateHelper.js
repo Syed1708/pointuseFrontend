@@ -1,7 +1,25 @@
+// frontend/src/utils/dateHelper.js
 
-// 1. Find Monday from any YYYY-MM-DD string or Date object safely [3]
+// Helper: Safely converts a YYYY-MM-DD or YYYY/MM/DD string into a local Date object [3]
+const parseLocalString = (dateString) => {
+  if (!dateString) return null;
+  
+  // If it's already a Date object, return a new copy
+  if (dateString instanceof Date) return new Date(dateString);
+
+  // Split by dash or slash into numbers: "2026-07-05" -> [2026, 7, 5]
+  const parts = String(dateString).split(/[-/]/).map(Number);
+  if (parts.length < 3 || parts.some(isNaN)) return null;
+
+  // Month index is 0-based in JavaScript (January is 0, July is 6)
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+};
+
+// 1. Find Monday from any date string or object [3]
 export const getMonday = (d) => {
-  const date = d instanceof Date ? d : new Date(String(d).replace(/-/g, '/') + 'T00:00:00');
+  const date = parseLocalString(d);
+  if (!date) return '';
+
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   const targetDate = new Date(date.setDate(diff));
@@ -9,14 +27,13 @@ export const getMonday = (d) => {
   const year = targetDate.getFullYear();
   const month = String(targetDate.getMonth() + 1).padStart(2, '0');
   const dayStr = String(targetDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${dayStr}`;
+  return `${year}-${month}-${dayStr}`; // Returns e.g. "2026-06-29"
 };
 
 // 2. Get ISO Week Number [3]
 export const getWeekNumber = (dateString) => {
-  if (!dateString) return '';
-  const parsedDate = new Date(String(dateString).replace(/-/g, '/'));
-  if (isNaN(parsedDate.getTime())) return '';
+  const parsedDate = parseLocalString(dateString);
+  if (!parsedDate) return '';
 
   const date = new Date(Date.UTC(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate()));
   const dayNum = date.getUTCDay() || 7;
@@ -27,9 +44,8 @@ export const getWeekNumber = (dateString) => {
 
 // 3. Format single day date (e.g. "22-06") [3]
 export const getDayDateString = (mondayString, offsetDays) => {
-  if (!mondayString) return '';
-  const date = new Date(String(mondayString).replace(/-/g, '/'));
-  if (isNaN(date.getTime())) return '';
+  const date = parseLocalString(mondayString);
+  if (!date) return '';
 
   date.setDate(date.getDate() + offsetDays);
   const day = String(date.getDate()).padStart(2, '0');
@@ -37,11 +53,10 @@ export const getDayDateString = (mondayString, offsetDays) => {
   return `${day}-${month}`;
 };
 
-// 4. Format full range (e.g. "22-06-2026 to 28-06-2026") [3]
+// 4. Format week range (e.g. "22-06-2026 to 28-06-2026") [3]
 export const getWeekRangeString = (mondayString) => {
-  if (!mondayString) return '';
-  const start = new Date(String(mondayString).replace(/-/g, '/'));
-  if (isNaN(start.getTime())) return '';
+  const start = parseLocalString(mondayString);
+  if (!start) return '';
 
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
