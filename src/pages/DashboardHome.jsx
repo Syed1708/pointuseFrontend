@@ -266,7 +266,7 @@ export default function DashboardHome() {
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">My Weekly Matrix</h3>
             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Compare your scheduled planning with actual registered times [2].</p>
             
-            <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4 max-h-[220px] overflow-y-auto pr-1 divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4 max-h-55 overflow-y-auto pr-1 divide-y divide-zinc-100 dark:divide-zinc-800">
               {isStatsLoading ? (
                 <p className="text-xs text-zinc-400 text-center py-6">Loading calendar...</p>
               ) : !liveStats?.myDetailedWeeklyDays || liveStats.myDetailedWeeklyDays.length === 0 ? (
@@ -279,7 +279,7 @@ export default function DashboardHome() {
                       <span className="font-bold text-zinc-900 dark:text-zinc-200 capitalize">
                         {day.dayName.slice(0, 3)} <span className="text-[10px] text-zinc-400 font-normal">({day.date})</span>
                       </span>
-                      <span className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[140px]">
+                      <span className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-35">
                         Plan: <span className="font-medium text-zinc-500 dark:text-zinc-300">{day.scheduleText}</span>
                       </span>
                     </div>
